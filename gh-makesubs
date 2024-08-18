@@ -62,8 +62,11 @@ fi
 # Navigate to the embedded repository
 cd $EMBEDDED_REPO_DIR
 
+
+echo "Creating a fork of the repository in directory $EMBEDDED_REPO_DIR"
 # Fork the repository using gh CLI
-gh repo fork --clone=false
+gh repo fork --remote 
+
 
 
 
