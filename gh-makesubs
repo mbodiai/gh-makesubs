@@ -1,13 +1,70 @@
 #!/bin/bash
+# Ensure the script exits on any error
+set -e
 
 # Get the list of directories from the command output
-directories=$(gh extension ls . | awk '{print $1}')
+directories=$(gh ls . | awk '{print $1}')
 
+
+_makesubs() {
+
+EMBEDDED_REPO_DIR=$1
+
+# Get the submodule path (optional)
+SUBMODULE_PATH=$2
+
+if [ -z "$SUBMODULE_PATH" ]; then
+    SUBMODULE_PATH=$EMBEDDED_REPO_DIR
+fi
+
+# Navigate to the embedded repository
+cd $EMBEDDED_REPO_DIR
+
+
+echo "Creating a fork of the repository in directory $EMBEDDED_REPO_DIR"
+# Fork the repository using gh CLI
+gh repo fork --remote 
+
+
+
+
+# Get the URL of the forked repository
+FORK_URL=$(git remote get-url origin)
+
+gh repo set-default $FORK_URL
+
+# Push the content to the fork
+BRANCH_NAME=$(git branch --show-current)
+git add .gitignore
+git commit -m "Initial commit"
+git add .
+git push origin $BRANCH_NAME
+
+# Navigate back to the main repository
+cd ..
+
+# Remove the existing directory
+rm -rf $EMBEDDED_REPO_DIR
+
+# Add the forked repository as a submodule
+git submodule add -b $BRANCH_NAME $FORK_URL $SUBMODULE_PATH
+
+# Initialize and update the submodule
+git submodule update --init --recursive
+
+# Stage and commit the changes
+git add .gitmodules $SUBMODULE_PATH
+git commit -m "Converted $EMBEDDED_REPO_DIR to submodule from forked repository"
+
+echo "Submodule created successfully!"
+}
+
+echo "Found directories: $directories"
 # Loop through each directory and call gh makesubs
 for dir in $directories; do
     echo "Processing directory: $dir"
     cd "$dir" || { echo "Failed to navigate to $dir"; continue; }
-    gh makesubs
+    _makesubs .
     cd - || { echo "Failed to navigate back"; exit 1; }
 done
 
